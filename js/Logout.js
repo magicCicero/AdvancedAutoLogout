@@ -1,167 +1,107 @@
-﻿function LogOutAllOptions() {
-//Log out from all websites
-	var r = confirm("You are about to logout out of ALL websites, are you sure?");
-	if (r == true) {
-			chrome.cookies.getAll({}, function(cookies) {
-			for(var i=0; i<cookies.length;i++) {
-				chrome.cookies.remove({url: "https://" + cookies[i].domain  + cookies[i].path, name: cookies[i].name});
-			}
-		});
-	}
-}
+﻿chrome.runtime.onInstalled.addListener(() => {
+    // Setup any necessary configurations on installation.
+});
 
-function LogOutSpecificSites(){
-	var URLProvided=document.getElementById('NameOfWebsites').value
-	if(document.getElementById("TimeInMins").value!="0"){
-		
-		var timeInMins=document.getElementById("TimeInMins").value;
-		alert("You will be logged out of the site '"+URLProvided+"' in approximately "+timeInMins+" minute(s).");
-		chrome.alarms.create(URLProvided,{delayInMinutes: parseInt(timeInMins),periodInMinutes:1 });
-			
-		chrome.alarms.onAlarm.addListener(function(alarm){
-			  console.log("Alarm Elapsed Name "+alarm.name);
-			  console.log("This is Over");
-			  chrome.alarms.clear("My First Alarm");
-			URLProvided=URLProvided.replace("www.","");
-			URLProvided=URLProvided.replace("outlook.","");
-			
-			if(URLProvided.toLowerCase().indexOf("yahoo.com") > -1)
-			{
-				URLProvided="yahoo.com";
-			}
-			if(URLProvided.toLowerCase().indexOf("web.facebook.com")> -1 )
-			{
-				URLProvided="facebook.com";
-			}
-			if(URLProvided!=null || URLProvided!=""){
-				var domainsProvided=ExtractDomain(URLProvided);
-				chrome.cookies.getAll({domain: domainsProvided}, function(cookies) {
-				  for(var i=0; i<cookies.length;i++) {
-					chrome.cookies.remove({url: "https://" + cookies[i].domain  + cookies[i].path, name: cookies[i].name});
-					}
-				  });	
-			}
-			  
-		});
-	}
-	else if ( document.getElementById("NameOfWebsites").value!='' ) {
-			URLProvided=URLProvided.replace("www.","");
-			URLProvided=URLProvided.replace("outlook.","");
-			if(URLProvided.toLowerCase().indexOf("yahoo.com") > -1)
-			{
-				URLProvided="yahoo.com";
-			}
-			if(URLProvided.toLowerCase().indexOf("web.facebook.com")> -1 )
-			{
-				URLProvided="facebook.com";
-			}
-			if(URLProvided!=null || URLProvided!=""){
-				var domainsProvided=ExtractDomain(URLProvided);
-				chrome.cookies.getAll({domain: domainsProvided}, function(cookies) {
-				  for(var i=0; i<cookies.length;i++) {
-					chrome.cookies.remove({url: "https://" + cookies[i].domain  + cookies[i].path, name: cookies[i].name});
-					}
-				  });	
-			}
-			alert("You are now Logged out of the site : "+ URLProvided);
-	}
-}
-
-/*chrome.alarms.onAlarm.addListener(function( alarm ) {
-  console.log("Got an alarm!", alarm);
-});*/
-
-function ExtractDomain(url) {
-    var domain;
-    if (url.indexOf("://") > -1) {
-        domain = url.split('/')[2];
+// Function to log out of all websites by clearing all cookies
+function LogOutAllOptions() {
+    var r = confirm("You are about to log out of ALL websites. Are you sure?");
+    if (r === true) {
+        chrome.cookies.getAll({}, (cookies) => {
+            for (let cookie of cookies) {
+                chrome.cookies.remove({
+                    url: "https://" + cookie.domain + cookie.path,
+                    name: cookie.name
+                });
+            }
+        });
     }
-    else {
-        domain = url.split('/')[0];
+}
+
+// Function to log out of a specific site after a delay
+function LogOutSpecificSites(urlProvided, timeInMins) {
+    if (timeInMins && timeInMins !== "0") {
+        chrome.alarms.create(urlProvided, { delayInMinutes: parseInt(timeInMins) });
+    } else {
+        performLogout(urlProvided);
     }
-
-    domain = domain.split(':')[0];
-
-    return domain;
 }
 
-/*
-function createAlarm() {
-     chrome.alarms.create(alarmName, {
-       delayInMinutes: 0.1, periodInMinutes: 0.1});
-}
-*/
+// Listener for alarms to trigger specific logouts
+chrome.alarms.onAlarm.addListener((alarm) => {
+    performLogout(alarm.name);
+    chrome.alarms.clear(alarm.name);
+});
 
-function LoadCurrentTab(){
-//	chrome.tabs.create({'url': chrome.extension.getURL('pages/popup.html')}, function(tab) {});
-	chrome.tabs.getSelected(null, function(tab) {
-		var tabUrl = tab.url;
-		tabUrl=ExtractDomain(tabUrl);
-		document.getElementById("NameOfWebsites").value=tabUrl;
-		
+// Helper function to perform the logout by removing cookies
+function performLogout(urlProvided) {
+    const domain = ExtractDomain(urlProvided);
+    chrome.cookies.getAll({ domain: domain }, (cookies) => {
+        for (let cookie of cookies) {
+            chrome.cookies.remove({
+                url: "https://" + cookie.domain + cookie.path,
+                name: cookie.name
+            });
+        }
     });
 }
 
-var checkLoad = function() {   
-    document.readyState !== "complete" ? setTimeout(checkLoad,11) : LoadCurrentTab();   
-};  
-checkLoad();  
+// Function to extract the domain from a URL
+function ExtractDomain(url) {
+    let domain = url.includes("://") ? url.split('/')[2] : url.split('/')[0];
+    return domain.split(':')[0];
+}
 
+// Function to add a site to the auto-logout list
+function addToLogoutList(url) {
+    chrome.storage.local.get("AutoLogoutAllWebSitesList", (data) => {
+        const currentList = data.AutoLogoutAllWebSitesList || "";
+        const newList = currentList ? `${currentList};${url}` : url;
+        chrome.storage.local.set({ "AutoLogoutAllWebSitesList": newList });
+    });
+}
 
-chrome.windows.onCreated.addListener(function() {
-	chrome.windows.getAll(function(windows) {
-		if(localStorage["AutoLogoutAll"]=="Y" && windows.length==1)
-		{
-			chrome.cookies.getAll({}, function(cookies) {
-				for(var i=0; i<cookies.length;i++) {
-					chrome.cookies.remove({url: "https://" + cookies[i].domain  + cookies[i].path, name: cookies[i].name});
-				}
-			});
-		}
-		else if(localStorage["AutoLogoutAllWebSitesList"]!="" && localStorage["AutoLogoutAllWebSitesList"]!=null && windows.length==1){
-			var AutoLogoutWebsitesList=localStorage["AutoLogoutAllWebSitesList"].split(";");
-			for (var i = 0; i < AutoLogoutWebsitesList.length; i++) {
-				if(AutoLogoutWebsitesList[i]!=null && AutoLogoutWebsitesList[i]!=""){
-					LogoutWebsitesUsingURL(AutoLogoutWebsitesList[i]);
-				}
-			}
-		}
-	});
+// Function to remove a site from the auto-logout list
+function removeFromLogoutList(url) {
+    chrome.storage.local.get("AutoLogoutAllWebSitesList", (data) => {
+        let updatedList = "";
+        const sites = (data.AutoLogoutAllWebSitesList || "").split(";");
+        for (let site of sites) {
+            if (ExtractDomain(site) !== ExtractDomain(url)) {
+                updatedList += `${site};`;
+            }
+        }
+        chrome.storage.local.set({ "AutoLogoutAllWebSitesList": updatedList });
+    });
+}
+
+// Listener for window creation to trigger auto-logout based on configuration
+chrome.windows.onCreated.addListener(() => {
+    chrome.storage.local.get(["AutoLogoutAll", "AutoLogoutAllWebSitesList"], (data) => {
+        const autoLogoutAll = data.AutoLogoutAll === "Y";
+        const siteList = data.AutoLogoutAllWebSitesList ? data.AutoLogoutAllWebSitesList.split(";") : [];
+
+        if (autoLogoutAll) {
+            LogOutAllOptions();
+        } else {
+            for (let site of siteList) {
+                if (site) {
+                    performLogout(site);
+                }
+            }
+        }
+    });
 });
 
-function LogoutWebsitesUsingURL(URLProvided){
-	URLProvided=URLProvided.replace("www.","");
-	URLProvided=URLProvided.replace("outlook.","");
-	if(URLProvided.toLowerCase().indexOf("yahoo.com") > -1)
-	{
-		URLProvided="yahoo.com";
-	}
-	if(URLProvided!=null || URLProvided!=""){
-		var domainsProvided=ExtractDomain(URLProvided);
-		chrome.cookies.getAll({domain: domainsProvided}, function(cookies) {
-		for(var i=0; i<cookies.length;i++) {
-			chrome.cookies.remove({url: "https://" + cookies[i].domain  + cookies[i].path, name: cookies[i].name});
-		}
-		});	
-	}	
-}
-
-function funcAddToLogOutList(){
-	var r = confirm("Are you sure you want to add this site to log out list?");
-	if (r == true) {
-		localStorage["AutoLogoutAllWebSitesList"]+=document.getElementById('NameOfWebsites').value+";";
-	}
-}
-
-var elmLogoutAll = document.getElementById('LogoutAll');
-var elmLogoutSpecific = document.getElementById('LogoutSpecific');
-var elmAddToLogOutList = document.getElementById('AddToLogOutList');
-
-if (elmLogoutAll)
-	elmLogoutAll.addEventListener('click', LogOutAllOptions);
-
-if (elmLogoutSpecific)
-	elmLogoutSpecific.addEventListener('click', LogOutSpecificSites);
-
-if (elmAddToLogOutList)
-	elmAddToLogOutList.addEventListener('click', funcAddToLogOutList);
+// Listener for messages to perform specific actions
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "logoutAll") {
+        LogOutAllOptions();
+    } else if (message.action === "logoutSpecific") {
+        LogOutSpecificSites(message.url, message.timeInMins);
+    } else if (message.action === "addToLogoutList") {
+        addToLogoutList(message.url);
+    } else if (message.action === "removeFromLogoutList") {
+        removeFromLogoutList(message.url);
+    }
+    sendResponse({ status: "success" });
+});
