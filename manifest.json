@@ -8,7 +8,7 @@
 	"homepage_url": "http://safetyredirector.com/",
 	"version": "7.0.2",
 
-	"permissions": [ "storage", "cookies", "alarms", "webNavigation", "scripting" ],
+	"permissions": [ "storage", "cookies", "alarms", "webNavigation"	 ],
 
 	"host_permissions": [
 		"http://*/*",
